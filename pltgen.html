@@ -5,19 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plot Generator</title>
   <style>
-    body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; background: #f0f2f5; }
-    #header { width: 100%; background: #fff; color: black; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; position: fixed; top: 0; left: 0; right: 0; box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); display: flex; justify-content: center; gap: 30px; }
-    #header a { color: black; text-decoration: none; font-size: 18px; padding: 10px 15px; border-radius: 5px; transition: background 0.3s; font-weight: bold; }
-    #header a:hover { background: rgba(0, 0, 0, 0.1); }
-    #container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 100%; max-width: 500px; margin-top: 80px; }
+    body { 
+      font-family: Arial, sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      min-height: 100vh; 
+      margin: 0; 
+      background: #f0f2f5; 
+    }
+    #header { 
+      width: 100%; 
+      background: #fff; 
+      color: black; 
+      padding: 15px; 
+      text-align: center; 
+      font-size: 20px; 
+      font-weight: bold; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); 
+      display: flex; 
+      justify-content: center; 
+      gap: 30px; 
+    }
+    #header a { 
+      color: black; 
+      text-decoration: none; 
+      font-size: 18px; 
+      padding: 10px 15px; 
+      border-radius: 5px; 
+      transition: background 0.3s; 
+      font-weight: bold; 
+    }
+    #header a:hover { 
+      background: rgba(0, 0, 0, 0.1); 
+    }
+    #container { 
+      background: #fff; 
+      padding: 30px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+      width: 100%; 
+      max-width: 500px; 
+      margin-top: 80px; 
+    }
     h2 { text-align: center; margin-bottom: 20px; }
-    .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-    .input-group input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+    .input-group { 
+      display: flex; 
+      gap: 10px; 
+      margin-bottom: 10px; 
+    }
+    .input-group input { 
+      flex: 1; 
+      padding: 10px; 
+      border-radius: 8px; 
+      border: 1px solid #ccc; 
+    }
     .dynamic-inputs { margin-bottom: 20px; }
-    button { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #007bff; color: #fff; font-size: 16px; cursor: pointer; }
+    button { 
+      width: 100%; 
+      padding: 12px; 
+      border-radius: 8px; 
+      border: none; 
+      background-color: #007bff; 
+      color: #fff; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin-top: 5px; 
+    }
     button:hover { background-color: #0056b3; }
-    select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 10px; }
-    #plot-container { margin-top: 20px; padding: 12px; background: #e9ecef; border-radius: 8px; text-align: center; }
+    select { 
+      width: 100%; 
+      padding: 10px; 
+      border-radius: 8px; 
+      border: 1px solid #ccc; 
+      margin-bottom: 10px; 
+    }
+    #plot-container { 
+      margin-top: 20px; 
+      padding: 12px; 
+      background: #e9ecef; 
+      border-radius: 8px; 
+      text-align: center; 
+    }
   </style>
 </head>
 <body>
@@ -34,71 +107,25 @@
       <option value="scatter">Scatter Plot</option>
       <option value="bar">Bar Chart</option>
       <option value="pie">Pie Chart</option>
+      <option value="radar">Radar Chart</option>
     </select>
+    
     <div class="dynamic-inputs" id="plot-inputs"></div>
+    
     <button onclick="addDataPoint()">Add Data Point</button>
+    
+    <!-- New file import section -->
+    <input type="file" id="file-input" accept=".csv, .json" style="margin-top: 10px;">
+    <button onclick="importFile()">Import File</button>
+    
     <button onclick="generatePlot()">Generate Plot</button>
-    <div id="plot-container"><img id="plot-img" style="width:100%;" /></div>
+    
+    <div id="plot-container">
+      <img id="plot-img" style="width:100%;" />
+    </div>
   </div>
 
-  <script>
-    function updateInputFields() {
-      const plotType = document.getElementById('plot-type').value;
-      const inputsContainer = document.getElementById('plot-inputs');
-      inputsContainer.innerHTML = '';
-    }
+  <script src="pltgen.js"></script>
 
-    function addDataPoint() {
-      const plotType = document.getElementById('plot-type').value;
-      const inputGroup = document.createElement('div');
-      inputGroup.className = 'input-group';
-      
-      if (plotType === 'pie' || plotType === 'bar') {
-        inputGroup.innerHTML = `
-          <input type="text" placeholder="Category" class="label-value">
-          <input type="number" placeholder="Value" class="value">
-          <button class="remove-btn" onclick="this.parentElement.remove()">✕</button>
-        `;
-      } else {
-        inputGroup.innerHTML = `
-          <input type="number" placeholder="X Value" class="x-value">
-          <input type="number" placeholder="Y Value" class="y-value">
-          <button class="remove-btn" onclick="this.parentElement.remove()">✕</button>
-        `;
-      }
-      document.getElementById('plot-inputs').appendChild(inputGroup);
-    }
-    
-    async function generatePlot() {
-      const dataPoints = [];
-      document.querySelectorAll('.input-group').forEach(group => {
-        const label = group.querySelector('.label-value')?.value.trim();
-        const x = parseFloat(group.querySelector('.x-value')?.value);
-        const y = parseFloat(group.querySelector('.y-value')?.value);
-        const value = parseFloat(group.querySelector('.value')?.value);
-        
-        const plotType = document.getElementById('plot-type').value;
-        if (plotType === 'pie' || plotType === 'bar') {
-          if (label && !isNaN(value)) dataPoints.push({ label, value });
-        } else {
-          if (!isNaN(x) && !isNaN(y)) dataPoints.push({ x, y });
-        }
-      });
-      
-      const plotType = document.getElementById('plot-type').value;
-      
-      try {
-        const response = await fetch('/generate_plot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: plotType, points: dataPoints })
-        });
-        const data = await response.json();
-        document.getElementById('plot-img').src = data.plot_url;
-      } catch (error) {
-        document.getElementById('plot-container').innerText = 'Error generating plot.';
-      }
-    }
-  </script>
 </body>
 </html>

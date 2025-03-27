@@ -6,13 +6,17 @@ import numpy as np
 from io import BytesIO
 import base64
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
-DATABASE = 'formulas.db'
-CSV_FILE = 'formulas.csv'
+@app.route('/pltgen.js')
+def serve_js():
+    return send_from_directory('static', 'pltgen.js') #works on magic
 
-# Check if database is a valid SQLite file
-def is_valid_database(file_path):
+DATABASE = 'formulas.db' #default database
+CSV_FILE = 'formulas.csv' #look for csv file
+
+#database is a valid SQLite file
+def DatabaseValid(file_path):
     if not os.path.exists(file_path):
         return False
     try:
@@ -23,9 +27,9 @@ def is_valid_database(file_path):
     except sqlite3.DatabaseError:
         return False
 
-# Ensure the database and table exist
-def setup_database():
-    if not is_valid_database(DATABASE):
+#database exists
+def Setup():
+    if not DatabaseValid(DATABASE):
         print(f"Error: {DATABASE} is not a valid SQLite database.")
         return
 
@@ -53,11 +57,11 @@ def setup_database():
 
     conn.close()
 
-# Get distinct desired units from the database
+# Get units from the database
 @app.route('/get_units', methods=['GET'])
-def GetUnits():
-    if not is_valid_database(DATABASE):
-        print(f"Error: {DATABASE} is not a valid SQLite database.")
+def GetUnits(): #Currently unused?
+    if not DatabaseValid(DATABASE):
+        print(f"Error: {DATABASE} is not a valid SQLite database.") #throw if not valid
         return jsonify([])
 
     conn = sqlite3.connect(DATABASE)
@@ -72,8 +76,8 @@ def GetUnits():
     finally:
         conn.close()
 
-def get_all_formulas():
-    if not is_valid_database(DATABASE):
+def LoadFormulas():
+    if not DatabaseValid(DATABASE):
         print(f"Error: {DATABASE} is not a valid SQLite database.")
         return []
 
@@ -97,8 +101,8 @@ def get_all_formulas():
     finally:
         conn.close()
 
-def solve_chain(known_values, desired):
-    formulas = get_all_formulas()
+def SolveChain(known_values, desired):
+    formulas = LoadFormulas()
     if not formulas:
         return None, "No formulas available to solve the problem."
 
@@ -129,12 +133,12 @@ def Index():
     return send_from_directory('', 'index.html')
     
 @app.route('/plot')
-def plot_page():
+def PlotPage():
     return send_from_directory('.', 'pltgen.html')
     
 # Upload CSV/JSON for plotting
 @app.route('/upload_data', methods=['POST'])
-def upload_data():
+def UserUpload():
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
     file = request.files['file']
@@ -147,13 +151,12 @@ def upload_data():
             return jsonify({'error': 'Unsupported file type'}), 400
         
         data = df.to_dict(orient='records')
-        return FromData(data)
+        # Automatically generate a plot from the uploaded data.
+        return generate_plot_from_data(data)
     except Exception as e:
         return jsonify({'error': f'Failed to process file: {e}'}), 500
 
-    
 @app.route('/generate_plot', methods=['POST'])
-
 def GeneratePlot():
     data = request.json
     return FromData(data.get('points', []), data.get('type', 'line'))
@@ -203,10 +206,22 @@ def FromData(points, plot_type='line'):  #Replaced with
         elif plot_type == 'radar':
             labels = [p.get('label') for p in points if 'label' in p and 'value' in p]
             values = [p.get('value') for p in points if 'label' in p and 'value' in p]
-            values += values[:1]
-            angles = np.linspace(0, 2 * np.pi, len(values), endpoint=True)
+    
+            if not labels or not values:
+                return jsonify({'error': 'Invalid radar chart data'}), 400
+
+            values += values[:1]  # Close the loop
+            num_vars = len(labels)
+            angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+            angles += angles[:1]  # Complete the circular plot
+        
+            fig, ax = plt.subplots(figsize=(6, 6), subplot_kw={'projection': 'polar'})
+            ax.set_theta_offset(np.pi / 2)
+            ax.set_theta_direction(-1)
+
             ax.plot(angles, values, 'o-', linewidth=2)
             ax.fill(angles, values, alpha=0.25)
+
             ax.set_xticks(angles[:-1])
             ax.set_xticklabels(labels)
 
@@ -224,7 +239,7 @@ def FromData(points, plot_type='line'):  #Replaced with
 
 
 @app.route('/find_formula', methods=['POST'])
-def find_formula():
+def FindCorrect():
     data = request.json
     known_values = data.get('known_values', {})
     desired_unit = data.get('desired_unit', '')
@@ -232,12 +247,12 @@ def find_formula():
     if not known_values or not desired_unit:
         return jsonify({'error': 'Please provide known values and the desired unit.'}), 400
 
-    result, error = solve_chain(known_values, desired_unit)
+    result, error = SolveChain(known_values, desired_unit)
     if error:
         return jsonify({'error': error}), 400
 
     return jsonify({'result': result})
 
 if __name__ == '__main__':
-    setup_database()
+    Setup()
     app.run(host='0.0.0.0', port=5000)
